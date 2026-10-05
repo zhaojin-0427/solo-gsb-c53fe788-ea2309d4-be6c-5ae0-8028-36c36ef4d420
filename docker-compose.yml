@@ -1,0 +1,12 @@
+services:
+  pvbench:
+    build: .
+    container_name: pv-bypass-bench
+    ports:
+      - "8000:8000"
+    volumes:
+      - pv_data:/srv/data
+    restart: unless-stopped
+
+volumes:
+  pv_data:

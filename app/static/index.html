@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光伏旁路组重接线试算台</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>光伏旁路组重接线试算台</h1>
+  <div class="sub">V(I)=max(Voc·(1−I/Isc), 0) · 搜索全部 1～3 串接线 · 全局最大功率优选</div>
+</header>
+
+<main>
+  <section class="card" id="inputCard">
+    <h2>1. 录入旁路组（3～9 个，编号唯一）</h2>
+    <div class="form-row">
+      <label>试算名称（可空）<input type="text" id="trialName" maxlength="60" placeholder="例如：屋顶 A 区首轮"></label>
+      <div class="btn-row">
+        <button type="button" id="addGroupBtn">＋ 增加一组</button>
+        <button type="button" id="removeGroupBtn">－ 删除末组</button>
+        <button type="button" id="exampleBtn">填入示例</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="groupsTable">
+        <thead><tr><th>组编号</th><th>开路电压 Voc (V) ≤100</th><th>短路电流 Isc (A) ≤30</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h2>2. 基线接线（1～3 条非空串，每组恰出现一次）</h2>
+    <div class="btn-row">
+      <button type="button" id="addStringBtn">＋ 增加一串</button>
+      <button type="button" id="removeStringBtn">－ 删除末串</button>
+      <button type="button" id="allSeriesBtn">一键：全部串联</button>
+    </div>
+    <div id="baselineStrings" class="baseline"></div>
+
+    <div class="btn-row main-actions">
+      <button type="button" id="solveBtn" class="primary">开始试算并保存</button>
+      <span id="errorBox" class="error" hidden></span>
+      <span id="okBox" class="ok" hidden></span>
+    </div>
+  </section>
+
+  <section class="card" id="resultCard" hidden>
+    <h2>3. 对比结果</h2>
+    <div class="compare-grid">
+      <div class="wiring-box baseline-box">
+        <h3>基线接线</h3>
+        <div id="baselineWiring" class="wiring"></div>
+        <div class="metrics">
+          <div>峰值电压：<b id="baseVp">—</b> V</div>
+          <div>峰值电流：<b id="baseIp">—</b> A</div>
+          <div>峰值功率：<b id="basePp">—</b> W</div>
+          <div>开路电压：<b id="baseVoc">—</b> V</div>
+        </div>
+      </div>
+      <div class="wiring-box optimal-box">
+        <h3>最优接线 <span id="optBadge" class="badge" hidden></span></h3>
+        <div id="optimalWiring" class="wiring"></div>
+        <div class="metrics">
+          <div>峰值电压：<b id="optVp">—</b> V</div>
+          <div>峰值电流：<b id="optIp">—</b> A</div>
+          <div>峰值功率：<b id="optPp">—</b> W</div>
+          <div>开路电压：<b id="optVoc">—</b> V</div>
+        </div>
+      </div>
+    </div>
+    <div id="gainBox" class="gain"></div>
+
+    <h3>P-V 曲线对比</h3>
+    <canvas id="pvChart" width="900" height="380"></canvas>
+    <div class="legend">
+      <span class="lg lg-base"></span>基线
+      <span class="lg lg-opt"></span>最优
+      <span class="lg lg-knee"></span>旁路拐点
+    </div>
+
+    <h3>I-V 曲线对比</h3>
+    <canvas id="ivChart" width="900" height="300"></canvas>
+
+    <h3>全部接线候选（共 <span id="candCount">0</span> 种，按峰值功率降序）</h3>
+    <div class="table-wrap">
+      <table id="candidatesTable">
+        <thead><tr><th>#</th><th>串数</th><th>接线</th><th>峰值电压 (V)</th><th>峰值功率 (W)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>历史试算记录（点击可重开）</h2>
+    <div class="table-wrap">
+      <table id="historyTable">
+        <thead><tr><th>#</th><th>名称</th><th>组数</th><th>基线串数</th><th>保存时间 (UTC)</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>固定模型：组电压 V(I)=max(Voc×(1−I/Isc),0)；串电压求和；并联串共用端电压，零电压取最小可行电流，端电压达串开路电压时串电流为零。</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
