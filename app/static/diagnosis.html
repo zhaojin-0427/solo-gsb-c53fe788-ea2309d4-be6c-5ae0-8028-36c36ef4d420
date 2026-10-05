@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>现场电流偏差定位 · 光伏旁路组试算台</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>现场电流偏差定位</h1>
+  <div class="sub">选择历史试算记录 · 提交现场实测 (V, I) 点 · 健康 / 单组 Isc 下降 假设比较</div>
+</header>
+
+<main>
+  <p><a href="/">← 返回试算台主页</a></p>
+
+  <section class="card">
+    <h2>1. 选择历史试算记录</h2>
+    <div class="form-row">
+      <label>试算记录
+        <select id="recordSelect" style="padding:7px 9px;border:1px solid #c4cfdb;border-radius:6px;font-size:14px;min-width:320px;">
+          <option value="">加载中…</option>
+        </select>
+      </label>
+    </div>
+    <div id="recordInfo" class="gain" style="display:none;"></div>
+  </section>
+
+  <section class="card">
+    <h2>2. 现场实测点（至少 3 个电压互异的点）</h2>
+    <div class="form-row">
+      <label>电流容差 tolerance (A)，有限非负数
+        <input type="number" id="tolerance" value="0.05" min="0" step="0.01">
+      </label>
+      <div class="btn-row">
+        <button type="button" id="addPointBtn">＋ 增加测点</button>
+        <button type="button" id="removePointBtn">－ 删除末点</button>
+        <button type="button" id="threePointsBtn">重置为 3 点</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="pointsTable">
+        <thead><tr><th>#</th><th>实测端电压 V (V)，0 ≤ V ≤ 基线开路电压</th><th>实测电流 I (A)，≥ 0</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="btn-row main-actions">
+      <button type="button" id="diagnoseBtn" class="primary">提交诊断</button>
+      <span id="diagError" class="error" hidden></span>
+    </div>
+  </section>
+
+  <section class="card" id="diagResultCard" hidden>
+    <h2>3. 诊断结果</h2>
+    <div id="verdictBox" class="gain"></div>
+    <h3>逐点理论电流（按记录组参数与基线接线重建的健康曲线）</h3>
+    <div class="table-wrap">
+      <table id="diagPointsTable">
+        <thead><tr><th>#</th><th>实测 V (V)</th><th>实测 I (A)</th><th>理论 I (A)</th><th>偏差 理论−实测 (A)</th><th>容差内</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <h3>逐组“单组 Isc 下降”可行性</h3>
+    <div class="table-wrap">
+      <table id="diagGroupsTable">
+        <thead><tr><th>组编号</th><th>原 Isc (A)</th><th>可解释</th><th>可行 Isc 范围 (A)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p style="color:#64748b;font-size:12.5px;">
+      说明：理论电流由服务端依据记录保存的组参数与基线接线<b>重新构建分段串曲线</b>求得，
+      不使用试算结果快照中的稀疏采样；测点落在旁路拐点时按模型选段，
+      端电压达到支路开路电压的支路电流为零。诊断为只读操作，不改动原试算与重开结果。
+    </p>
+  </section>
+</main>
+
+<footer>假设空间：① 全部组健康；② 恰有一组 Isc 降为小于原值的正数（0.01 A 网格，至多两位小数）。</footer>
+
+<script src="/diagnosis.js"></script>
+</body>
+</html>

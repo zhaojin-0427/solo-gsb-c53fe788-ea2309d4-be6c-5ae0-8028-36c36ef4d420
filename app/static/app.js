@@ -375,9 +375,11 @@ async function loadHistory() {
       `<td class="num">${t.id}</td><td>${escapeHtml(t.name)}</td>` +
       `<td class="num">${t.num_groups}</td><td class="num">${t.num_baseline_strings}</td>` +
       `<td>${t.created_at.replace("T", " ").replace("+00:00", "")}</td>` +
-      `<td><button class="danger">删除</button></td>`;
+      `<td><a class="diag-link" href="/diagnosis.html?t=${t.id}"><button type="button">现场诊断</button></a> ` +
+      `<button class="danger">删除</button></td>`;
     tr.addEventListener("click", (e) => {
       if (e.target.classList.contains("danger")) return;
+      if (e.target.closest(".diag-link")) return;
       reopenTrial(t.id);
     });
     tr.querySelector(".danger").addEventListener("click", (e) => {

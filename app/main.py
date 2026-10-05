@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
+from .diagnosis import diagnose, validate_diagnosis_payload
 from .model import Group, evaluate_wiring, find_optimal
 from .validation import ValidationError, validate_payload
 
@@ -162,6 +163,71 @@ async def delete_trial(trial_id: int):
         return JSONResponse(status_code=404,
                             content={"detail": "试算记录不存在"})
     return {"deleted": trial_id}
+
+
+@app.post("/api/trials/{trial_id}/diagnose")
+async def diagnose_trial(trial_id: int, request: Request):
+    """现场电流偏差定位：按记录保存的组参数与基线接线重建曲线，
+    比较健康与单组 Isc 下降两类假设。只读，不改动原试算与重开结果。"""
+    trial = await run_in_threadpool(db.get_trial, trial_id)
+    if trial is None:
+        return JSONResponse(status_code=404,
+                            content={"detail": "试算记录不存在"})
+
+    try:
+        payload = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(status_code=400,
+                            content={"detail": "请求体不是合法的 JSON"})
+
+    # 用保存的输入重新校验/重建（不信任也不使用稀疏结果快照做插值）
+    groups = validate_payload(trial["payload"])
+    by_id = {g.id: g for g in groups}
+    baseline_voc = max(
+        sum(by_id[gid].voc for gid in string_ids)
+        for string_ids in trial["payload"]["baseline"]
+    )
+    points, tol = validate_diagnosis_payload(payload, baseline_voc)
+    result = await run_in_threadpool(
+        diagnose, groups, trial["payload"]["baseline"], points, tol)
+    result = _serialize_diagnosis(result)
+    result["id"] = trial_id
+    result["name"] = trial["name"]
+    return result
+
+
+def _serialize_diagnosis(result: dict) -> dict:
+    def pt(p: dict, keys: tuple) -> dict:
+        return {**{k: p[k] for k in keys},
+                "within_tolerance": p["within_tolerance"]}
+
+    out = {
+        "verdict": result["verdict"],
+        "message": result["message"],
+        "baseline_voc": _r6(result["baseline_voc"]),
+        "tolerance": _r6(result["tolerance"]),
+        "healthy_explainable": result["healthy_explainable"],
+        "points": [
+            pt(p, ("v", "i", "theoretical_i", "deviation"))
+            for p in result["points"]
+        ],
+        "groups": [],
+    }
+    for g in result["groups"]:
+        item = {
+            "group_id": g["group_id"],
+            "isc_original": _r6(g["isc_original"]),
+            "explainable": g["explainable"],
+        }
+        if g["explainable"]:
+            item["isc_min"] = _r6(g["isc_min"])
+            item["isc_max"] = _r6(g["isc_max"])
+            item["points"] = [
+                pt(p, ("v", "i", "theoretical_i_min", "theoretical_i_max"))
+                for p in g["points"]
+            ]
+        out["groups"].append(item)
+    return out
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
