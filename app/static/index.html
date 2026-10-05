@@ -9,7 +9,9 @@
 <body>
 <header class="topbar">
   <h1>光伏旁路组重接线试算台</h1>
-  <div class="sub">V(I)=max(Voc·(1−I/Isc), 0) · 搜索全部 1～3 串接线 · 全局最大功率优选</div>
+  <div class="sub">V(I)=max(Voc·(1−I/Isc), 0) · 搜索全部 1～3 串接线 · 全局最大功率优选
+    · <a class="toplink" href="/diagnose.html">现场电流偏差诊断 →</a>
+  </div>
 </header>
 
 <main>
@@ -95,9 +97,12 @@
     <h2>历史试算记录（点击可重开）</h2>
     <div class="table-wrap">
       <table id="historyTable">
-        <thead><tr><th>#</th><th>名称</th><th>组数</th><th>基线串数</th><th>保存时间 (UTC)</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>名称</th><th>组数</th><th>基线串数</th><th>保存时间 (UTC)</th><th>操作</th></tr></thead>
         <tbody></tbody>
       </table>
+    </div>
+    <div class="btn-row">
+      <a class="linkbtn" href="/diagnose.html">🔧 现场电流偏差诊断（选择记录并提交实测点）</a>
     </div>
   </section>
 </main>

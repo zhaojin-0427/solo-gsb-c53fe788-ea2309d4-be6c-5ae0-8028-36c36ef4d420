@@ -129,6 +129,23 @@ def _segment_at(curve: StringCurve, v: float) -> LinearSeg | None:
     return curve.segments[0]  # 数值边界兜底（最低段左端即 0）
 
 
+def string_current(curve: StringCurve, v: float) -> float:
+    """单条串在端电压 v 处的理论电流 I_S(v)。
+
+    v 达到（或超过）该串开路电压 Voc 时串电流为 0（支路已开路）；
+    落在拐点上时，分段连续故取相邻段结果一致，统一按 _segment_at 选段。
+    """
+    seg = _segment_at(curve, v)
+    if seg is None:
+        return 0.0
+    return max(0.0, seg.a - seg.b * v)
+
+
+def total_current(curves: Sequence[StringCurve], v: float) -> float:
+    """并联总理论电流：各串在同一端电压 v 下反解后求和（达 Voc 的串贡献 0）。"""
+    return sum(string_current(c, v) for c in curves)
+
+
 def _union_knees(curves: Sequence[StringCurve]) -> List[float]:
     """所有串拐点（含 0、各自 Voc 与最大 Voc）的升序去并集。"""
     vals = [0.0]

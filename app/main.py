@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .model import Group, evaluate_wiring, find_optimal
+from .diagnose import DiagnoseError, diagnose, validate_diagnose_request
+from .model import Group, evaluate_wiring, find_optimal, string_curve
 from .validation import ValidationError, validate_payload
 
 # 结果快照版本：2 起零电压电流修正为“每串 max(Isc)、并联按串求和”
@@ -32,6 +33,11 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 @app.exception_handler(ValidationError)
 async def _validation_handler(_: Request, exc: ValidationError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(DiagnoseError)
+async def _diagnose_handler(_: Request, exc: DiagnoseError):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
@@ -162,6 +168,42 @@ async def delete_trial(trial_id: int):
         return JSONResponse(status_code=404,
                             content={"detail": "试算记录不存在"})
     return {"deleted": trial_id}
+
+
+@app.post("/api/trials/{trial_id}/diagnose")
+async def diagnose_trial(trial_id: int, request: Request):
+    """现场电流偏差定位：只读历史记录，按保存的组参数与基线接线重算。
+
+    不改动原试算结果与重开数据（不写库）；记录不存在返回 404，
+    测点非法返回 400。
+    """
+    trial = db.get_trial(trial_id)
+    if trial is None:
+        return JSONResponse(status_code=404,
+                            content={"detail": "试算记录不存在"})
+    payload = trial["payload"]
+    try:
+        groups = validate_payload(payload)
+        by_id = {g.id: g for g in groups}
+        baseline_curves = [
+            string_curve([by_id[gid]
+                          for gid in sorted(s, key=lambda g: by_id[g].id)])
+            for s in payload["baseline"]
+        ]
+        baseline_voc = max(c.voc for c in baseline_curves)
+
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise DiagnoseError("请求体不是合法的 JSON")
+        points = validate_diagnose_request(body, baseline_voc)
+        tol = float(body["tolerance"])
+        result = await run_in_threadpool(
+            diagnose, groups, payload["baseline"], points, tol)
+    except DiagnoseError:
+        raise
+    return {"id": trial["id"], "name": trial["name"],
+            "diagnosis": result}
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
